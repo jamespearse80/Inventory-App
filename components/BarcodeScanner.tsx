@@ -11,7 +11,7 @@ interface BarcodeScannerProps {
 export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const [error, setError] = useState<string | null>(null)
   const [manualCode, setManualCode] = useState('')
-  const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => Promise<void> } | null>(null)
+  const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null)
   const startedRef = useRef(false)
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
     return () => {
       const s = scannerRef.current
       if (s) {
-        s.stop().catch(() => {}).finally(() => s.clear().catch(() => {}))
+        s.stop().catch(() => {}).finally(() => { try { s.clear() } catch { /* ignore */ } })
       }
     }
   }, [onScan])
