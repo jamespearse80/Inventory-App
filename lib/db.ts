@@ -5,11 +5,8 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createClient() {
-  // Prisma 7: url no longer in schema.prisma; pass via constructor at runtime
-  return new PrismaClient({
-    log: ['error'],
-    datasources: { db: { url: process.env.DATABASE_URL } },
-  })
+  // Prisma 7: URL is configured in prisma.config.ts, not passed to the constructor
+  return new PrismaClient({ log: ['error'] })
 }
 
 export const prisma = globalForPrisma.prisma ?? createClient()
