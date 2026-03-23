@@ -61,18 +61,18 @@ model Customer {
 }
 
 model Transaction {
-  id              String          @id @default(cuid())
-  type            TransactionType
+  id              String      @id @default(cuid())
+  type            String
   productId       String
-  product         Product         @relation(fields: [productId], references: [id])
+  product         Product     @relation(fields: [productId], references: [id])
   customerId      String?
-  customer        Customer?       @relation(fields: [customerId], references: [id])
+  customer        Customer?   @relation(fields: [customerId], references: [id])
   quantity        Int
   reference       String?
-  notes           String?         @db.NVarChar(Max)
+  notes           String?     @db.NVarChar(Max)
   performedBy     String?
-  createdAt       DateTime        @default(now())
-  dispatchedItems StockItem[]     @relation("DispatchedByTransaction")
+  createdAt       DateTime    @default(now())
+  dispatchedItems StockItem[] @relation("DispatchedByTransaction")
 }
 
 model Allocation {
@@ -82,7 +82,7 @@ model Allocation {
   customerId  String
   customer    Customer         @relation(fields: [customerId], references: [id])
   quantity    Int
-  status      AllocationStatus @default(PENDING)
+  status      String           @default("PENDING")
   reference   String?
   notes       String?          @db.NVarChar(Max)
   allocatedAt DateTime         @default(now())
@@ -93,9 +93,9 @@ model Allocation {
 model AllocationItem {
   id           String      @id @default(cuid())
   allocationId String
-  allocation   Allocation  @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  allocation   Allocation  @relation(fields: [allocationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   stockItemId  String?     @unique
-  stockItem    StockItem?  @relation(fields: [stockItemId], references: [id])
+  stockItem    StockItem?  @relation(fields: [stockItemId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   serialNumber String?
   assetTag     String?
   notes        String?     @db.NVarChar(Max)
@@ -106,16 +106,16 @@ model AllocationItem {
 model StockItem {
   id                      String          @id @default(cuid())
   productId               String
-  product                 Product         @relation(fields: [productId], references: [id])
+  product                 Product         @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   barcode                 String?         @unique
   serialNumber            String?
   assetTag                String?
-  status                  StockItemStatus @default(AVAILABLE)
+  status                  String          @default("AVAILABLE")
   location                String?
   notes                   String?         @db.NVarChar(Max)
   receivedRef             String?
   dispatchedTransactionId String?
-  dispatchedTransaction   Transaction?    @relation("DispatchedByTransaction", fields: [dispatchedTransactionId], references: [id])
+  dispatchedTransaction   Transaction?    @relation("DispatchedByTransaction", fields: [dispatchedTransactionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   allocationItem          AllocationItem?
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
@@ -127,25 +127,4 @@ model Settings {
   value String @db.NVarChar(Max)
 }
 
-enum TransactionType {
-  GOODS_IN
-  GOODS_OUT
-  ADJUSTMENT
-  RETURN
-}
-
-enum AllocationStatus {
-  PENDING
-  ALLOCATED
-  DISPATCHED
-  RETURNED
-  CANCELLED
-}
-
-enum StockItemStatus {
-  AVAILABLE
-  ALLOCATED
-  DISPATCHED
-  RETURNED
-  RETIRED
-}
+// SQL Server does not support enums — TransactionType, AllocationStatus and StockItemStatus are stored as String
