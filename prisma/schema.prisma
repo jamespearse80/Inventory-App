@@ -1,7 +1,8 @@
 // Inventory Management App - Prisma Schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "library"
 }
 
 datasource db {
