@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+:root {
+  /* Atech brand colours */
+  --atech-orange: #C49A2A;
+  --atech-orange-dark: #A07818;
+  --atech-orange-light: #D4AA3A;
+  --atech-navy: #0C1F3F;
+  --atech-navy-dark: #091529;
+  --atech-navy-mid: #122444;
+  --atech-navy-light: #1a3258;
+  --atech-bg: #F5F7FA;
+  --atech-surface: #ffffff;
+  --atech-text: #1a1a2e;
+  --atech-text-muted: #64748b;
+
+  --background: #F5F7FA;
+  --foreground: #1a1a2e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Atech utility classes */
+.btn-primary {
+  background-color: var(--atech-orange);
+  color: white;
+  border-radius: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+.btn-primary:hover {
+  background-color: var(--atech-orange-dark);
+}
+
+/* ── Print styles ───────────────────────────────────────────── */
+@media print {
+  /* Hide navigation chrome */
+  header, aside, nav {
+    display: none !important;
+  }
+  /* Reset page layout — remove the sidebar offset */
+  main, .md\:pl-56 {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+  }
+  /* Remove top-bar offset */
+  .pt-14 {
+    padding-top: 0 !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11px;
+  }
+  /* Page breaks */
+  .print\:break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Ensure table text is black */
+  table, th, td {
+    color: black !important;
+  }
+  /* Remove box shadows for print */
+  * {
+    box-shadow: none !important;
+  }
+  /* Page margins */
+  @page {
+    margin: 1.5cm;
+  }
+}
