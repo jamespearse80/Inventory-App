@@ -6,9 +6,10 @@ import { Camera, X } from 'lucide-react'
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void
   onClose: () => void
+  statusMessage?: string
 }
 
-export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
+export default function BarcodeScanner({ onScan, onClose, statusMessage }: BarcodeScannerProps) {
   const [error, setError] = useState<string | null>(null)
   const [manualCode, setManualCode] = useState('')
   const scannerRef = useRef<{ stop: () => Promise<void>; clear: () => void } | null>(null)
@@ -72,9 +73,11 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
           ) : (
             <>
               <div id="barcode-reader" className="w-full rounded-lg overflow-hidden" />
-              <p className="text-center text-sm text-gray-500 mt-2">
-                Point camera at barcode or QR code
-              </p>
+              {statusMessage ? (
+                <p className="text-center text-sm font-medium text-green-600 mt-2">{statusMessage} — scan next item or close</p>
+              ) : (
+                <p className="text-center text-sm text-gray-500 mt-2">Point camera at barcode or QR code</p>
+              )}
             </>
           )}
 

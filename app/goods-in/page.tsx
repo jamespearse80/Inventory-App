@@ -21,6 +21,8 @@ function GoodsInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showScanner, setShowScanner] = useState(false)
+  const [showDeviceScanner, setShowDeviceScanner] = useState(false)
+  const [lastScanned, setLastScanned] = useState<string | null>(null)
   const [product, setProduct] = useState<Product | null>(null)
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -104,6 +106,17 @@ function GoodsInForm() {
     await lookupProduct(code)
   }
 
+  // Appends scanned barcode to the device list and keeps scanner open
+  const handleDeviceScan = (code: string) => {
+    setDeviceBarcodes(prev => {
+      const lines = prev.split('\n').map(s => s.trim()).filter(Boolean)
+      if (lines.includes(code)) return prev // skip duplicate
+      return lines.length > 0 ? prev.trimEnd() + '\n' + code : code
+    })
+    setLastScanned(code)
+    // Don't close — keep scanning for next item
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.productId) {
@@ -150,6 +163,14 @@ function GoodsInForm() {
     <div className="max-w-xl space-y-5">
       {showScanner && (
         <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
+      )}
+
+      {showDeviceScanner && (
+        <BarcodeScanner
+          onScan={handleDeviceScan}
+          onClose={() => { setShowDeviceScanner(false); setLastScanned(null) }}
+          statusMessage={lastScanned ? `✓ Added: ${lastScanned}` : undefined}
+        />
       )}
 
       <div className="flex items-center gap-3">
@@ -295,10 +316,20 @@ function GoodsInForm() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Device Barcodes / Serial Numbers
-              <span className="ml-1.5 font-normal text-gray-400">(one per line — quantity derived from entries)</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Device Barcodes / Serial Numbers
+                <span className="ml-1.5 font-normal text-gray-400">(one per line)</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => { setLastScanned(null); setShowDeviceScanner(true) }}
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600"
+              >
+                <ScanLine className="h-3.5 w-3.5" />
+                Scan barcodes
+              </button>
+            </div>
             <textarea
               value={deviceBarcodes}
               onChange={e => setDeviceBarcodes(e.target.value)}
