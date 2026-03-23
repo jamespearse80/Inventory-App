@@ -31,6 +31,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Restore native select appearance stripped by Tailwind v4 preflight */
+select {
+  appearance: auto;
+  -webkit-appearance: auto;
+  background-color: white;
+}
+
 /* Atech utility classes */
 .btn-primary {
   background-color: var(--atech-orange);
