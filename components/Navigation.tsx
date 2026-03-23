@@ -14,8 +14,16 @@ import {
   Menu,
   X,
   ClipboardList,
+  LogOut,
 } from 'lucide-react'
 import { useState } from 'react'
+import { signOut } from 'next-auth/react'
+
+type User = {
+  name?: string | null
+  email?: string | null
+  image?: string | null
+}
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -29,9 +37,15 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
-export default function Navigation() {
+export default function Navigation({ user }: { user: User | null }) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const initials = user?.name
+    ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : user?.email?.[0].toUpperCase() ?? '?'
+
+  const displayName = user?.name ?? user?.email ?? ''
 
   return (
     <>
@@ -50,6 +64,34 @@ export default function Navigation() {
           <img src="/Atech-Logo.png" alt="Atech" className="h-8 w-auto" />
           <span className="text-xs font-medium" style={{color: '#C49A2A'}}>Stock Manager</span>
         </div>
+
+        {/* Signed-in user */}
+        {user && (
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {user.image ? (
+                <img src={user.image} alt={displayName} className="h-7 w-7 rounded-full" />
+              ) : (
+                <div
+                  className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{background: '#C49A2A', color: 'white'}}
+                >
+                  {initials}
+                </div>
+              )}
+              <span className="hidden sm:block text-sm" style={{color: '#cbd5e1'}}>{displayName}</span>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs hover:bg-white/10 transition-colors"
+              style={{color: '#94a3b8'}}
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Sign out</span>
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Sidebar — desktop */}
