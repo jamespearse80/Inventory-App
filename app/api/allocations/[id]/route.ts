@@ -56,7 +56,30 @@ export async function PUT(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params
-    await prisma.allocation.delete({ where: { id } })
+
+    await prisma.$transaction(async (tx) => {
+      // Find linked StockItem IDs before deleting items
+      const linkedItems = await tx.allocationItem.findMany({
+        where: { allocationId: id, stockItemId: { not: null } },
+        select: { stockItemId: true },
+      })
+      const stockItemIds = linkedItems.map(i => i.stockItemId!)
+
+      // Delete AllocationItems first (NoAction means no cascade)
+      await tx.allocationItem.deleteMany({ where: { allocationId: id } })
+
+      // Restore StockItems to AVAILABLE
+      if (stockItemIds.length > 0) {
+        await tx.stockItem.updateMany({
+          where: { id: { in: stockItemIds } },
+          data: { status: 'AVAILABLE' },
+        })
+      }
+
+      // Now delete the Allocation
+      await tx.allocation.delete({ where: { id } })
+    })
+
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Failed to delete allocation' }, { status: 500 })

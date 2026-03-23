@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense, Fragment } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Plus, Layers, ChevronDown, ChevronRight, Pencil, Check, X } from 'lucide-react'
+import { Plus, Layers, ChevronDown, ChevronRight, Pencil, Check, X, PackageSearch } from 'lucide-react'
 
 interface AllocationItem {
   id: string
@@ -25,6 +25,7 @@ interface Allocation {
 
 interface Product { id: string; name: string; sku: string; inventory: { quantity: number } | null }
 interface Customer { id: string; name: string; company: string | null }
+interface StockItem { id: string; serialNumber: string | null; barcode: string | null; assetTag: string | null; notes: string | null; status: string }
 
 const statusColors: Record<string, string> = {
   ALLOCATED: 'bg-amber-100 text-[#A07818]',
@@ -132,6 +133,9 @@ function AllocationsContent() {
   const [formError, setFormError] = useState('')
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [itemsMap, setItemsMap] = useState<Record<string, AllocationItem[]>>({})
+  const [availableStockItems, setAvailableStockItems] = useState<StockItem[]>([])
+  const [loadingStockItems, setLoadingStockItems] = useState(false)
+  const [selectedStockItemIds, setSelectedStockItemIds] = useState<Set<string>>(new Set())
   const [form, setForm] = useState({
     productId: '',
     customerId: searchParams.get('customerId') || '',
@@ -171,22 +175,54 @@ function AllocationsContent() {
 
   useEffect(() => { fetchAllocations() }, [fetchAllocations])
 
+  // Fetch available StockItems whenever the selected product changes
+  useEffect(() => {
+    if (!form.productId) {
+      setAvailableStockItems([])
+      setSelectedStockItemIds(new Set())
+      return
+    }
+    setLoadingStockItems(true)
+    setSelectedStockItemIds(new Set())
+    fetch(`/api/stock-items?productId=${form.productId}&status=AVAILABLE`)
+      .then(r => r.json())
+      .then((items: StockItem[]) => setAvailableStockItems(items))
+      .catch(() => setAvailableStockItems([]))
+      .finally(() => setLoadingStockItems(false))
+  }, [form.productId])
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     setFormError('')
-    const serialLines = form.serialsText.split('\n').map(s => s.trim()).filter(Boolean)
-    const qty = serialLines.length > 0 ? serialLines.length : parseInt(form.quantity) || 0
     try {
+      let body: Record<string, unknown>
+      if (selectedStockItemIds.size > 0) {
+        // Tracked inventory — send specific StockItem IDs
+        body = {
+          productId: form.productId,
+          customerId: form.customerId,
+          reference: form.reference,
+          notes: form.notes,
+          stockItemIds: Array.from(selectedStockItemIds),
+        }
+      } else {
+        // Legacy path — quantity + optional serial numbers text
+        const serialLines = form.serialsText.split('\n').map(s => s.trim()).filter(Boolean)
+        const qty = serialLines.length > 0 ? serialLines.length : parseInt(form.quantity) || 0
+        body = { ...form, quantity: qty, serialNumbers: serialLines }
+      }
       const res = await fetch('/api/allocations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, quantity: qty, serialNumbers: serialLines }),
+        body: JSON.stringify(body),
       })
       if (res.ok) {
         await fetchAllocations()
         setShowForm(false)
         setForm({ productId: '', customerId: '', quantity: '', reference: '', notes: '', serialsText: '' })
+        setAvailableStockItems([])
+        setSelectedStockItemIds(new Set())
       } else {
         const data = await res.json()
         setFormError(data.error || 'Failed to create allocation')
@@ -220,8 +256,6 @@ function AllocationsContent() {
     }))
   }
 
-  const serialLinesInForm = form.serialsText.split('\n').map(s => s.trim()).filter(Boolean)
-  const derivedQtyInForm = serialLinesInForm.length > 0 ? serialLinesInForm.length : parseInt(form.quantity) || 0
 
   return (
     <div className="space-y-5">
@@ -276,29 +310,101 @@ function AllocationsContent() {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-gray-500 mb-1">
-                Serial Numbers / Asset Tags
-                <span className="ml-1 font-normal text-gray-400">(one per line — quantity is derived from entries)</span>
+                Select Available Devices
+                <span className="ml-1 font-normal text-gray-400">{form.productId ? '' : '— choose a product first'}</span>
               </label>
-              <textarea
-                value={form.serialsText}
-                onChange={e => setForm(prev => ({ ...prev, serialsText: e.target.value }))}
-                rows={4}
-                placeholder={'e.g.\nSN-001-ABC\nSN-002-DEF\nSN-003-GHI'}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A] font-mono resize-y"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                {serialLinesInForm.length > 0
-                  ? `${serialLinesInForm.length} device${serialLinesInForm.length !== 1 ? 's' : ''} entered`
-                  : 'Or enter a numeric quantity below'}
-              </p>
+
+              {loadingStockItems && (
+                <div className="flex items-center gap-2 text-sm text-gray-400 py-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#C49A2A]"></div>
+                  Loading available stock…
+                </div>
+              )}
+
+              {!loadingStockItems && form.productId && availableStockItems.length > 0 && (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 px-3 py-2 flex items-center justify-between text-xs text-gray-500 border-b border-gray-200">
+                    <span>{availableStockItems.length} device{availableStockItems.length !== 1 ? 's' : ''} available</span>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setSelectedStockItemIds(new Set(availableStockItems.map(i => i.id)))} className="text-[#C49A2A] hover:underline">Select all</button>
+                      <button type="button" onClick={() => setSelectedStockItemIds(new Set())} className="text-gray-400 hover:underline">Clear</button>
+                    </div>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto divide-y divide-gray-50">
+                    {availableStockItems.map(item => {
+                      const checked = selectedStockItemIds.has(item.id)
+                      const label = item.serialNumber || item.barcode || item.assetTag || item.id
+                      return (
+                        <label key={item.id} className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-amber-50/40 ${checked ? 'bg-amber-50/60' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setSelectedStockItemIds(prev => {
+                                const next = new Set(prev)
+                                if (next.has(item.id)) next.delete(item.id)
+                                else next.add(item.id)
+                                return next
+                              })
+                            }}
+                            className="accent-[#C49A2A] h-4 w-4 rounded"
+                          />
+                          <span className="font-mono text-sm text-gray-800 flex-1">{label}</span>
+                          {item.assetTag && item.serialNumber && (
+                            <span className="text-xs text-gray-400 font-mono">{item.assetTag}</span>
+                          )}
+                          {item.notes && <span className="text-xs text-gray-400 truncate max-w-32">{item.notes}</span>}
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {selectedStockItemIds.size > 0 && (
+                    <div className="bg-amber-50 px-3 py-2 text-xs text-[#A07818] border-t border-amber-100 flex items-center gap-1.5">
+                      <Check className="h-3.5 w-3.5" />
+                      {selectedStockItemIds.size} device{selectedStockItemIds.size !== 1 ? 's' : ''} selected
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!loadingStockItems && form.productId && availableStockItems.length === 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
+                  <PackageSearch className="h-4 w-4" />
+                  No individually tracked devices — use quantity below
+                </div>
+              )}
+
+              {/* Legacy fallback: manual serial numbers when no tracked stock items */}
+              {(!form.productId || availableStockItems.length === 0) && !loadingStockItems && (
+                <div className="mt-2">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Serial Numbers / Asset Tags
+                    <span className="ml-1 font-normal text-gray-400">(one per line — quantity is derived from entries)</span>
+                  </label>
+                  <textarea
+                    value={form.serialsText}
+                    onChange={e => setForm(prev => ({ ...prev, serialsText: e.target.value }))}
+                    rows={4}
+                    placeholder={'e.g.\nSN-001-ABC\nSN-002-DEF\nSN-003-GHI'}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A] font-mono resize-y"
+                  />
+                  {form.serialsText.split('\n').map(s => s.trim()).filter(Boolean).length > 0 ? (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {form.serialsText.split('\n').map(s => s.trim()).filter(Boolean).length} device{form.serialsText.split('\n').map(s => s.trim()).filter(Boolean).length !== 1 ? 's' : ''} entered
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1">Or enter a numeric quantity below</p>
+                  )}
+                </div>
+              )}
             </div>
-            {serialLinesInForm.length === 0 && (
+            {selectedStockItemIds.size === 0 && availableStockItems.length === 0 && !loadingStockItems && (
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Quantity *</label>
                 <input
                   type="number"
                   min="1"
-                  required={serialLinesInForm.length === 0}
+                  required={selectedStockItemIds.size === 0 && availableStockItems.length === 0}
                   value={form.quantity}
                   onChange={e => setForm(prev => ({ ...prev, quantity: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A]"
@@ -316,11 +422,20 @@ function AllocationsContent() {
               />
             </div>
             <div className="sm:col-span-2 flex justify-end gap-2">
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
-              <button type="submit" disabled={saving || derivedQtyInForm === 0}
-                className="bg-[#C49A2A] text-white px-4 py-2 rounded-lg text-sm disabled:opacity-60 hover:bg-[#A07818]">
-                {saving ? 'Saving…' : `Allocate ${derivedQtyInForm > 0 ? derivedQtyInForm + ' device' + (derivedQtyInForm !== 1 ? 's' : '') : ''}`}
-              </button>
+              <button type="button" onClick={() => { setShowForm(false); setAvailableStockItems([]); setSelectedStockItemIds(new Set()) }} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Cancel</button>
+              {(() => {
+                const serialCount = form.serialsText.split('\n').map(s => s.trim()).filter(Boolean).length
+                const qty = selectedStockItemIds.size > 0
+                  ? selectedStockItemIds.size
+                  : serialCount > 0 ? serialCount : parseInt(form.quantity) || 0
+                const disabled = saving || qty === 0
+                return (
+                  <button type="submit" disabled={disabled}
+                    className="bg-[#C49A2A] text-white px-4 py-2 rounded-lg text-sm disabled:opacity-60 hover:bg-[#A07818]">
+                    {saving ? 'Saving…' : `Allocate${qty > 0 ? ` ${qty} device${qty !== 1 ? 's' : ''}` : ''}`}
+                  </button>
+                )
+              })()}
             </div>
           </form>
         </div>
