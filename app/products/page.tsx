@@ -42,8 +42,8 @@ export default function ProductsPage() {
       const res = await fetch(`/api/products?${params}`)
       if (res.ok) {
         const data = await res.json()
-        setProducts(data.products)
-        setTotal(data.total)
+        setProducts(Array.isArray(data.products) ? data.products : [])
+        setTotal(typeof data.total === 'number' ? data.total : 0)
       }
     } finally {
       setLoading(false)
@@ -51,7 +51,10 @@ export default function ProductsPage() {
   }, [search, categoryFilter])
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.json()).then(setCategories).catch(console.error)
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setCategories(data))
+      .catch(console.error)
   }, [])
 
   useEffect(() => {
