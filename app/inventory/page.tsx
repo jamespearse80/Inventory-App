@@ -594,11 +594,13 @@ function InventoryContent() {
   useEffect(() => { fetchInventory() }, [fetchInventory])
 
   const toggleExpand = async (productId: string) => {
+    const isCurrentlyExpanded = !!expandedIds[productId]
     setExpandedIds(prev => ({ ...prev, [productId]: !prev[productId] }))
-    if (!expandedIds[productId] && !stockItemsMap[productId]) {
+    // Always fetch fresh data when opening (not closing) a row
+    if (!isCurrentlyExpanded) {
       setLoadingExpanded(prev => ({ ...prev, [productId]: true }))
       try {
-        const res = await fetch(`/api/stock-items?productId=${productId}&status=AVAILABLE`)
+        const res = await fetch(`/api/stock-items?productId=${productId}`)
         if (res.ok) {
           const data: StockDevice[] = await res.json()
           setStockItemsMap(prev => ({ ...prev, [productId]: data }))
@@ -612,7 +614,7 @@ function InventoryContent() {
   const handleDeviceAssigned = async (productId: string) => {
     fetchInventory()
     try {
-      const res = await fetch(`/api/stock-items?productId=${productId}&status=AVAILABLE`)
+      const res = await fetch(`/api/stock-items?productId=${productId}`)
       if (res.ok) {
         const data = await res.json()
         setStockItemsMap(prev => ({ ...prev, [productId]: data }))
