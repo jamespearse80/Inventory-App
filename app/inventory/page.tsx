@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback, Suspense, Fragment } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Search, AlertTriangle, BarChart3, RefreshCw, UserPlus, X, CheckCircle, Package, ChevronDown, ChevronRight, MapPin } from 'lucide-react'
+import { Search, AlertTriangle, BarChart3, RefreshCw, UserPlus, X, CheckCircle, Package, ChevronDown, ChevronRight, MapPin, ScanLine } from 'lucide-react'
 import StockLevelBadge from '@/components/StockLevelBadge'
+import BarcodeScanner from '@/components/BarcodeScanner'
 
 interface InventoryItem {
   id: string
@@ -337,6 +338,8 @@ function MoveLocationModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const [scanError, setScanError] = useState('')
 
   useEffect(() => {
     fetch('/api/locations')
@@ -377,6 +380,12 @@ function MoveLocationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      {showScanner && (
+        <BarcodeScanner
+          onScan={handleScanLocation}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
       <div className="bg-white rounded-xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
@@ -398,11 +407,28 @@ function MoveLocationModal({
               <p className="text-xs text-gray-500">Current location: <span className="font-mono font-medium text-gray-700">{device.location}</span></p>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">New Location *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-medium text-gray-700">New Location *</label>
+                <button
+                  type="button"
+                  onClick={() => { setScanError(''); setShowScanner(true) }}
+                  className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 text-gray-600"
+                >
+                  <ScanLine className="h-3.5 w-3.5" />
+                  Scan location
+                </button>
+              </div>
+              {scanError && <p className="text-xs text-red-500 mb-1">{scanError}</p>}
+              {selected && (
+                <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 bg-amber-50 border border-orange-100 rounded-lg">
+                  <MapPin className="h-3.5 w-3.5 text-[#C49A2A] shrink-0" />
+                  <span className="text-xs font-mono font-medium text-gray-800">{selected}</span>
+                </div>
+              )}
               <select
                 required
                 value={selected}
-                onChange={e => setSelected(e.target.value)}
+                onChange={e => { setSelected(e.target.value); setScanError('') }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A]"
               >
                 <option value="">Select a location…</option>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowDownToLine, ScanLine, CheckCircle, ChevronDown, PlusCircle, X } from 'lucide-react'
+import { ArrowLeft, ArrowDownToLine, ScanLine, CheckCircle, ChevronDown, PlusCircle, X, MapPin } from 'lucide-react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import StockLevelBadge from '@/components/StockLevelBadge'
 
@@ -34,6 +34,10 @@ function GoodsInForm() {
   const [formError, setFormError] = useState('')
   const [deviceBarcodes, setDeviceBarcodes] = useState('')
   const [locations, setLocations] = useState<Array<{ code: string; group: string }>>([])
+  const [showLocationScanner, setShowLocationScanner] = useState(false)
+  const [locationScanError, setLocationScanError] = useState('')
+  const [showLocationScanner, setShowLocationScanner] = useState(false)
+  const [locationScanError, setLocationScanError] = useState('')
   const [form, setForm] = useState({
     productId: searchParams.get('productId') || '',
     quantity: '',
@@ -107,6 +111,28 @@ function GoodsInForm() {
     }
   }
 
+  const handleScanLocation = (scanned: string) => {
+    setShowLocationScanner(false)
+    setLocationScanError('')
+    const match = locations.find(l => l.code === scanned.trim())
+    if (match) {
+      setForm(prev => ({ ...prev, location: match.code }))
+    } else {
+      setLocationScanError(`No location found for barcode: "${scanned}"`)
+    }
+  }
+
+  const handleScanLocation = (scanned: string) => {
+    setShowLocationScanner(false)
+    setLocationScanError('')
+    const match = locations.find(l => l.code === scanned.trim())
+    if (match) {
+      setForm(prev => ({ ...prev, location: match.code }))
+    } else {
+      setLocationScanError(`No location found for barcode: "${scanned}"`)
+    }
+  }
+
   const handleScan = async (code: string) => {
     setShowScanner(false)
     await lookupProduct(code)
@@ -176,6 +202,13 @@ function GoodsInForm() {
           onScan={handleDeviceScan}
           onClose={() => { setShowDeviceScanner(false); setLastScanned(null) }}
           statusMessage={lastScanned ? `✓ Added: ${lastScanned}` : undefined}
+        />
+      )}
+
+      {showLocationScanner && (
+        <BarcodeScanner
+          onScan={handleScanLocation}
+          onClose={() => setShowLocationScanner(false)}
         />
       )}
 
@@ -389,10 +422,27 @@ function GoodsInForm() {
 
           {locations.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Storage Location</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Storage Location</label>
+                <button
+                  type="button"
+                  onClick={() => { setLocationScanError(''); setShowLocationScanner(true) }}
+                  className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 text-gray-600"
+                >
+                  <ScanLine className="h-3.5 w-3.5" />
+                  Scan location
+                </button>
+              </div>
+              {locationScanError && <p className="text-xs text-red-500 mb-1">{locationScanError}</p>}
+              {form.location && (
+                <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 bg-amber-50 border border-orange-100 rounded-lg">
+                  <MapPin className="h-3.5 w-3.5 text-[#C49A2A] shrink-0" />
+                  <span className="text-xs font-mono font-medium text-gray-800">{form.location}</span>
+                </div>
+              )}
               <select
                 value={form.location}
-                onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))}
+                onChange={e => { setForm(prev => ({ ...prev, location: e.target.value })); setLocationScanError('') }}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A]"
               >
                 <option value="">Select location (optional)…</option>
