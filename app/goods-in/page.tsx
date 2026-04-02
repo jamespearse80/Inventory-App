@@ -113,10 +113,6 @@ function GoodsInForm() {
     setShowLocationScanner(false)
     setLocationScanError('')
     const match = locations.find(l => l.code === scanned.trim())
-  const handleScanLocation = (scanned: string) => {
-    setShowLocationScanner(false)
-    setLocationScanError('')
-    const match = locations.find(l => l.code === scanned.trim())
     if (match) {
       setForm(prev => ({ ...prev, location: match.code }))
     } else {
