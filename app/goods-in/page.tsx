@@ -36,8 +36,6 @@ function GoodsInForm() {
   const [locations, setLocations] = useState<Array<{ code: string; group: string }>>([])
   const [showLocationScanner, setShowLocationScanner] = useState(false)
   const [locationScanError, setLocationScanError] = useState('')
-  const [showLocationScanner, setShowLocationScanner] = useState(false)
-  const [locationScanError, setLocationScanError] = useState('')
   const [form, setForm] = useState({
     productId: searchParams.get('productId') || '',
     quantity: '',
@@ -115,13 +113,6 @@ function GoodsInForm() {
     setShowLocationScanner(false)
     setLocationScanError('')
     const match = locations.find(l => l.code === scanned.trim())
-    if (match) {
-      setForm(prev => ({ ...prev, location: match.code }))
-    } else {
-      setLocationScanError(`No location found for barcode: "${scanned}"`)
-    }
-  }
-
   const handleScanLocation = (scanned: string) => {
     setShowLocationScanner(false)
     setLocationScanError('')
