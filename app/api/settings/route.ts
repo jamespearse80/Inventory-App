@@ -10,6 +10,7 @@ const ALLOWED_KEYS = [
   'teams_webhook_url',
   'company_name',
   'low_stock_check_interval',
+  'stock_locations',
 ]
 
 export async function GET() {

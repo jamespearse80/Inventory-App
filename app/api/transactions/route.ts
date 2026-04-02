@@ -5,7 +5,7 @@ import { checkAndSendLowStockAlerts } from '@/lib/alerts'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { type, productId, customerId, quantity, reference, notes, performedBy, deviceBarcodes } = body
+    const { type, productId, customerId, quantity, reference, notes, performedBy, deviceBarcodes, location } = body
 
     if (!type || !productId || !quantity) {
       return NextResponse.json({ error: 'type, productId, and quantity are required' }, { status: 400 })
@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
               serialNumber: barcode || null,
               status: 'AVAILABLE',
               receivedRef: reference || null,
+              location: location || null,
             },
           })
         }
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
         if (availableItems.length > 0) {
           await tx.stockItem.updateMany({
             where: { id: { in: availableItems.map(i => i.id) } },
-            data: { status: 'DISPATCHED', dispatchedTransactionId: created.id },
+            data: { status: 'DISPATCHED', dispatchedTransactionId: created.id, location: 'IN-TRANSIT (Swindon -> Customer)' },
           })
         }
       }

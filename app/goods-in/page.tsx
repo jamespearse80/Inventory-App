@@ -33,19 +33,25 @@ function GoodsInForm() {
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
   const [deviceBarcodes, setDeviceBarcodes] = useState('')
+  const [locations, setLocations] = useState<Array<{ code: string; group: string }>>([])
   const [form, setForm] = useState({
     productId: searchParams.get('productId') || '',
     quantity: '',
     reference: '',
     notes: '',
     performedBy: '',
+    location: '',
   })
 
-  // Fetch all products for the dropdown
+  // Fetch all products and locations for the dropdowns
   useEffect(() => {
     fetch('/api/products?limit=1000')
       .then(r => r.json())
       .then(data => setAllProducts(Array.isArray(data) ? data : (data.products ?? [])))
+      .catch(console.error)
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setLocations(data))
       .catch(console.error)
   }, [])
 
@@ -380,6 +386,32 @@ function GoodsInForm() {
               placeholder="Your name"
             />
           </div>
+
+          {locations.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Storage Location</label>
+              <select
+                value={form.location}
+                onChange={e => setForm(prev => ({ ...prev, location: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A]"
+              >
+                <option value="">Select location (optional)…</option>
+                {Object.entries(
+                  locations.reduce<Record<string, string[]>>((acc, loc) => {
+                    if (!acc[loc.group]) acc[loc.group] = []
+                    acc[loc.group].push(loc.code)
+                    return acc
+                  }, {})
+                ).map(([group, codes]) => (
+                  <optgroup key={group} label={group}>
+                    {codes.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
