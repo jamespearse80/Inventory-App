@@ -354,6 +354,17 @@ function MoveLocationModal({
     return acc
   }, {})
 
+  const handleScanLocation = (scanned: string) => {
+    setShowScanner(false)
+    setScanError('')
+    const match = locations.find(l => l.code === scanned.trim())
+    if (match) {
+      setSelected(match.code)
+    } else {
+      setScanError(`No location found for barcode: "${scanned}"`)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
