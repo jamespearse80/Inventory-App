@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, Suspense, Fragment } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Search, AlertTriangle, BarChart3, RefreshCw, UserPlus, X, CheckCircle, Package, ChevronDown, ChevronRight } from 'lucide-react'
+import { Search, AlertTriangle, BarChart3, RefreshCw, UserPlus, X, CheckCircle, Package, ChevronDown, ChevronRight, MapPin } from 'lucide-react'
 import StockLevelBadge from '@/components/StockLevelBadge'
 
 interface InventoryItem {
@@ -42,6 +42,7 @@ interface StockDevice {
   serialNumber: string | null
   assetTag: string | null
   status: string
+  location: string | null
 }
 
 function AssignModal({ item, onClose, onSuccess }: AssignModalProps) {
@@ -322,6 +323,111 @@ function AssignModal({ item, onClose, onSuccess }: AssignModalProps) {
   )
 }
 
+function MoveLocationModal({
+  device,
+  onClose,
+  onSuccess,
+}: {
+  device: StockDevice & { productId: string; productName: string }
+  onClose: () => void
+  onSuccess: (updatedLocation: string | null) => void
+}) {
+  const [locations, setLocations] = useState<Array<{ code: string; group: string }>>([])
+  const [selected, setSelected] = useState(device.location || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/locations')
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setLocations(data))
+      .catch(console.error)
+  }, [])
+
+  const grouped = locations.reduce<Record<string, string[]>>((acc, loc) => {
+    if (!acc[loc.group]) acc[loc.group] = []
+    acc[loc.group].push(loc.code)
+    return acc
+  }, {})
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/stock-items/${device.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location: selected || null }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to move device.')
+      } else {
+        setDone(true)
+        setTimeout(() => { onSuccess(selected || null); onClose() }, 1000)
+      }
+    } catch {
+      setError('Network error.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-semibold text-gray-900 text-sm">Move to Location</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{device.productName}</p>
+            <p className="text-xs font-mono text-[#A07818] mt-0.5">{device.barcode || device.serialNumber || 'No barcode'}</p>
+          </div>
+          <button onClick={onClose} className="p-1 rounded hover:bg-gray-100"><X className="h-4 w-4 text-gray-400" /></button>
+        </div>
+        {done ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-green-600">
+            <CheckCircle className="h-10 w-10" />
+            <p className="font-medium text-sm">Location updated!</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+            {error && <div className="p-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">{error}</div>}
+            {device.location && (
+              <p className="text-xs text-gray-500">Current location: <span className="font-mono font-medium text-gray-700">{device.location}</span></p>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">New Location *</label>
+              <select
+                required
+                value={selected}
+                onChange={e => setSelected(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A]"
+              >
+                <option value="">Select a location…</option>
+                {Object.entries(grouped).map(([group, codes]) => (
+                  <optgroup key={group} label={group}>
+                    {codes.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button type="submit" disabled={saving || !selected} className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60" style={{ background: '#C49A2A' }}>
+                {saving ? 'Moving…' : 'Confirm Move'}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function SingleDeviceAssignModal({ device, onClose, onSuccess }: {
   device: StockDevice & { productId: string; productName: string }
   onClose: () => void
@@ -434,6 +540,7 @@ function InventoryContent() {
   const [stockItemsMap, setStockItemsMap] = useState<Record<string, StockDevice[]>>({})
   const [loadingExpanded, setLoadingExpanded] = useState<Record<string, boolean>>({})
   const [deviceToAssign, setDeviceToAssign] = useState<(StockDevice & { productId: string; productName: string }) | null>(null)
+  const [deviceToMove, setDeviceToMove] = useState<(StockDevice & { productId: string; productName: string }) | null>(null)
   const filterLow = searchParams.get('filter') === 'low'
 
   const fetchInventory = useCallback(async () => {
@@ -499,6 +606,21 @@ function InventoryContent() {
           device={deviceToAssign}
           onClose={() => setDeviceToAssign(null)}
           onSuccess={() => handleDeviceAssigned(deviceToAssign.productId)}
+        />
+      )}
+      {deviceToMove && (
+        <MoveLocationModal
+          device={deviceToMove}
+          onClose={() => setDeviceToMove(null)}
+          onSuccess={(newLocation) => {
+            // Update in-place without refetching
+            setStockItemsMap(prev => ({
+              ...prev,
+              [deviceToMove.productId]: (prev[deviceToMove.productId] ?? []).map(d =>
+                d.id === deviceToMove.id ? { ...d, location: newLocation } : d
+              ),
+            }))
+          }}
         />
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -646,7 +768,8 @@ function InventoryContent() {
                                       <th className="text-xs font-semibold text-gray-400 uppercase pb-2 pr-3 w-44">Serial Number</th>
                                       <th className="text-xs font-semibold text-gray-400 uppercase pb-2 pr-3 w-36">Asset Tag</th>
                                       <th className="text-xs font-semibold text-gray-400 uppercase pb-2 pr-3 w-24">Status</th>
-                                      <th className="w-20"></th>
+                                      <th className="text-xs font-semibold text-gray-400 uppercase pb-2 pr-3">Location</th>
+                                      <th className="w-28"></th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -672,17 +795,32 @@ function InventoryContent() {
                                             {device.status}
                                           </span>
                                         </td>
+                                        <td className="py-2 pr-3 text-xs font-mono text-gray-500">
+                                          {device.location
+                                            ? <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3 text-[#C49A2A] shrink-0" />{device.location}</span>
+                                            : <span className="text-gray-300 italic font-sans">—</span>}
+                                        </td>
                                         <td className="py-2 text-right">
-                                          {device.status === 'AVAILABLE' && (
+                                          <div className="flex gap-1.5 justify-end">
                                             <button
-                                              onClick={() => setDeviceToAssign({ ...device, productId: item.product.id, productName: item.product.name })}
-                                              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-white ml-auto"
-                                              style={{ background: '#C49A2A' }}
+                                              onClick={() => setDeviceToMove({ ...device, productId: item.product.id, productName: item.product.name })}
+                                              className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border border-gray-300 text-gray-600 hover:bg-gray-50"
+                                              title="Move to location"
                                             >
-                                              <UserPlus className="h-3 w-3" />
-                                              Assign
+                                              <MapPin className="h-3 w-3" />
+                                              Move
                                             </button>
-                                          )}
+                                            {device.status === 'AVAILABLE' && (
+                                              <button
+                                                onClick={() => setDeviceToAssign({ ...device, productId: item.product.id, productName: item.product.name })}
+                                                className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-white"
+                                                style={{ background: '#C49A2A' }}
+                                              >
+                                                <UserPlus className="h-3 w-3" />
+                                                Assign
+                                              </button>
+                                            )}
+                                          </div>
                                         </td>
                                       </tr>
                                     ))}
