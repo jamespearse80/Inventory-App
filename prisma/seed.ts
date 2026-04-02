@@ -8,8 +8,13 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('🌱 Seeding database...')
 
-  // Categories
-  const categories = [
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('database.windows.net')
+
+  if (isProduction) {
+    console.log('  ℹ Production environment detected — skipping demo data, seeding settings only.')
+  } else {
+    // Categories (dev/local only)
+    const categories = [
     { name: 'Laptops', description: 'Portable computers and notebooks' },
     { name: 'Desktop PCs', description: 'Tower and all-in-one desktop computers' },
     { name: 'Phones', description: 'Mobile phones and smartphones' },
@@ -79,8 +84,9 @@ async function main() {
       console.log(`  ✓ Customer: ${cust.name}`)
     }
   }
+  } // end !isProduction block
 
-  // Default settings
+  // Default settings — always applied
   await prisma.settings.upsert({
     where: { key: 'alerts_enabled' },
     create: { id: 'alerts_enabled', key: 'alerts_enabled', value: 'false' },
