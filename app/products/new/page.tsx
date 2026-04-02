@@ -31,7 +31,10 @@ export default function NewProductPage() {
   })
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.json()).then(setCategories).catch(console.error)
+    fetch('/api/categories')
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setCategories(data))
+      .catch(console.error)
   }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {

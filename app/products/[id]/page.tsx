@@ -63,7 +63,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       fetch('/api/categories').then(r => r.json()),
     ]).then(([p, c]) => {
       setProduct(p)
-      setCategories(c)
+      if (Array.isArray(c)) setCategories(c)
       setEditForm({
         name: p.name,
         sku: p.sku,
