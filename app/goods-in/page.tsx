@@ -154,7 +154,7 @@ function GoodsInForm() {
           setSuccess(false)
           setProduct(null)
           setDeviceBarcodes('')
-          setForm({ productId: '', quantity: '', reference: '', notes: '', performedBy: '' })
+          setForm({ productId: '', quantity: '', reference: '', notes: '', performedBy: '', location: '' })
         }, 2500)
       } else {
         const data = await res.json()
