@@ -5,7 +5,7 @@ import { checkAndSendLowStockAlerts } from '@/lib/alerts'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { type, productId, customerId, quantity, reference, notes, performedBy, deviceBarcodes, location } = body
+    const { type, productId, customerId, quantity, reference, notes, performedBy, deviceBarcodes, location, allocateToCustomerId } = body
 
     if (!type || !productId || !quantity) {
       return NextResponse.json({ error: 'type, productId, and quantity are required' }, { status: 400 })
@@ -63,16 +63,35 @@ export async function POST(req: NextRequest) {
 
       // Create individual StockItems when device barcodes are provided on Goods In
       if (type === 'GOODS_IN' && Array.isArray(deviceBarcodes) && deviceBarcodes.length > 0) {
+        const createdStockItems: { id: string }[] = []
         for (const raw of deviceBarcodes) {
           const barcode = typeof raw === 'string' ? raw.trim() : ''
-          await tx.stockItem.create({
+          const si = await tx.stockItem.create({
             data: {
               productId,
               barcode: barcode || null,
               serialNumber: barcode || null,
-              status: 'AVAILABLE',
+              status: allocateToCustomerId ? 'ALLOCATED' : 'AVAILABLE',
               receivedRef: reference || null,
               location: location || null,
+            },
+          })
+          createdStockItems.push({ id: si.id })
+        }
+
+        // Immediately allocate to customer if requested
+        if (allocateToCustomerId && createdStockItems.length > 0) {
+          await tx.allocation.create({
+            data: {
+              productId,
+              customerId: allocateToCustomerId,
+              quantity: createdStockItems.length,
+              reference: reference || null,
+              notes: notes || null,
+              status: 'ALLOCATED',
+              items: {
+                create: createdStockItems.map(si => ({ stockItemId: si.id })),
+              },
             },
           })
         }

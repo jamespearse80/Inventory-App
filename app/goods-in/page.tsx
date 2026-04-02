@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowDownToLine, ScanLine, CheckCircle, ChevronDown, PlusCircle, X, MapPin } from 'lucide-react'
+import { ArrowLeft, ArrowDownToLine, ScanLine, CheckCircle, ChevronDown, PlusCircle, X, MapPin, UserPlus } from 'lucide-react'
 import BarcodeScanner from '@/components/BarcodeScanner'
 import StockLevelBadge from '@/components/StockLevelBadge'
 
@@ -15,6 +15,12 @@ interface Product {
   category: { name: string }
   inventory: { quantity: number } | null
   reorderPoint: number
+}
+
+interface Customer {
+  id: string
+  name: string
+  company: string | null
 }
 
 function GoodsInForm() {
@@ -36,6 +42,9 @@ function GoodsInForm() {
   const [locations, setLocations] = useState<Array<{ code: string; group: string }>>([])
   const [showLocationScanner, setShowLocationScanner] = useState(false)
   const [locationScanError, setLocationScanError] = useState('')
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [allocateToCustomerId, setAllocateToCustomerId] = useState('')
+  const [showAllocate, setShowAllocate] = useState(false)
   const [form, setForm] = useState({
     productId: searchParams.get('productId') || '',
     quantity: '',
@@ -54,6 +63,10 @@ function GoodsInForm() {
     fetch('/api/locations')
       .then(r => r.json())
       .then(data => Array.isArray(data) && setLocations(data))
+      .catch(console.error)
+    fetch('/api/customers')
+      .then(r => r.json())
+      .then(data => Array.isArray(data) && setCustomers(data))
       .catch(console.error)
   }, [])
 
@@ -159,6 +172,7 @@ function GoodsInForm() {
           quantity: effectiveQty,
           type: 'GOODS_IN',
           ...(barcodeLines.length > 0 && { deviceBarcodes: barcodeLines }),
+          ...(showAllocate && allocateToCustomerId && { allocateToCustomerId }),
         }),
       })
       if (res.ok) {
@@ -167,6 +181,8 @@ function GoodsInForm() {
           setSuccess(false)
           setProduct(null)
           setDeviceBarcodes('')
+          setAllocateToCustomerId('')
+          setShowAllocate(false)
           setForm({ productId: '', quantity: '', reference: '', notes: '', performedBy: '', location: '' })
         }, 2500)
       } else {
@@ -461,13 +477,58 @@ function GoodsInForm() {
             />
           </div>
 
+          {/* Allocate to customer on receipt */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => { setShowAllocate(p => !p); setAllocateToCustomerId('') }}
+              className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium transition-colors ${showAllocate ? 'bg-amber-50 text-[#A07818]' : 'hover:bg-gray-50 text-gray-700'}`}
+            >
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Allocate to a customer on receipt
+              </div>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showAllocate ? 'rotate-180' : ''}`} />
+            </button>
+            {showAllocate && (
+              <div className="px-4 pb-4 pt-2 border-t border-gray-100 bg-amber-50/30 space-y-2">
+                <p className="text-xs text-gray-500">
+                  The stock will be received and immediately allocated to the selected customer.
+                  {deviceBarcodes.split('\n').filter(Boolean).length > 0
+                    ? ' Each scanned device will be linked individually.'
+                    : ' Whole quantity will be allocated.'}
+                </p>
+                <select
+                  value={allocateToCustomerId}
+                  onChange={e => setAllocateToCustomerId(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49A2A] bg-white"
+                >
+                  <option value="">Select a customer…</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}{c.company ? ` — ${c.company}` : ''}
+                    </option>
+                  ))}
+                </select>
+                {allocateToCustomerId && (
+                  <p className="text-xs text-[#A07818] font-medium flex items-center gap-1">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    Will be allocated to {customers.find(c => c.id === allocateToCustomerId)?.name} on receipt
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={loading || !form.productId}
+            disabled={loading || !form.productId || (showAllocate && !allocateToCustomerId)}
             className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-2.5 rounded-lg font-medium hover:bg-green-700 disabled:opacity-60"
           >
             <ArrowDownToLine className="h-4 w-4" />
-            {loading ? 'Recording…' : 'Record Goods In'}
+            {loading ? 'Recording…' : showAllocate && allocateToCustomerId
+              ? `Receive & Allocate to ${customers.find(c => c.id === allocateToCustomerId)?.name?.split(' ')[0]}`
+              : 'Record Goods In'}
           </button>
         </form>
       </div>
