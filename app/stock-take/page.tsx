@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
-import { Printer, RefreshCw, CheckSquare, Square, CheckCircle2, AlertCircle, Filter, Package } from 'lucide-react'
+import { Printer, RefreshCw, CheckSquare, Square, CheckCircle2, AlertCircle, Filter, Package, Users } from 'lucide-react'
 
 interface StockItem {
   id: string
@@ -44,6 +44,12 @@ interface ProductGroup {
   manufacturer: string | null
   inventoryQty: number
   stockItems: StockItem[]
+}
+
+interface Customer {
+  id: string
+  name: string
+  company: string | null
 }
 
 type CountedMap = Record<string, boolean>
@@ -100,12 +106,17 @@ function StockTakeContent() {
   const [counted, setCounted] = useState<CountedMap>({})
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerFilter, setCustomerFilter] = useState<string>('')
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
+      const stockUrl = customerFilter
+        ? `/api/stock-items?includeProduct=true&customerId=${customerFilter}`
+        : '/api/stock-items?includeProduct=true'
       const [stockRes, invRes] = await Promise.all([
-        fetch('/api/stock-items?includeProduct=true'),
+        fetch(stockUrl),
         fetch('/api/inventory'),
       ])
       if (stockRes.ok) setStockItems(await stockRes.json())
@@ -113,9 +124,13 @@ function StockTakeContent() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [customerFilter])
 
   useEffect(() => { fetchItems() }, [fetchItems])
+
+  useEffect(() => {
+    fetch('/api/customers').then(r => r.json()).then(setCustomers).catch(() => {})
+  }, [])
 
   // Persist counted state to sessionStorage so refreshing doesn't lose progress
   useEffect(() => {
@@ -143,7 +158,10 @@ function StockTakeContent() {
   }
 
   // Build combined groups from both inventory and stock-item sources
-  const allGroups = buildGroups(inventory, stockItems)
+  const selectedCustomer = customers.find(c => c.id === customerFilter) ?? null
+
+  // When filtering by customer, suppress aggregate inventory rows (not customer-scoped)
+  const allGroups = buildGroups(customerFilter ? [] : inventory, stockItems)
 
   // Status filter applies to StockItem rows; aggregate-only products always show on ALL
   const filteredGroups = allGroups.map(g => {
@@ -186,7 +204,9 @@ function StockTakeContent() {
       <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Stock Take</h1>
-          <p className="text-sm text-gray-500">Count and verify all individual devices</p>
+          <p className="text-sm text-gray-500">
+            {selectedCustomer ? `Showing stock for ${selectedCustomer.name}` : 'Count and verify all individual devices'}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -250,6 +270,31 @@ function StockTakeContent() {
         ))}
       </div>
 
+      {/* Customer filter */}
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <span className="flex items-center gap-1 text-xs text-gray-500"><Users className="h-3.5 w-3.5" />Customer:</span>
+        <select
+          value={customerFilter}
+          onChange={e => { setCustomerFilter(e.target.value); setCounted({}) }}
+          className="text-xs border border-gray-200 rounded-full px-3 py-1.5 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-[#C49A2A]"
+        >
+          <option value="">All Customers</option>
+          {customers.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name}{c.company ? ` (${c.company})` : ''}
+            </option>
+          ))}
+        </select>
+        {customerFilter && (
+          <button
+            onClick={() => { setCustomerFilter(''); setCounted({}) }}
+            className="text-xs text-gray-400 hover:text-gray-600 underline"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {/* Print header — only visible on print */}
       <div className="hidden print:block mb-6">
         <div className="flex items-center justify-between border-b-2 border-gray-800 pb-3 mb-4">
@@ -259,6 +304,7 @@ function StockTakeContent() {
           </div>
           <div className="text-right">
             <p className="text-xl font-bold text-gray-900">Asset Stock Take Sheet</p>
+            {selectedCustomer && <p className="text-sm font-medium text-gray-700">Customer: {selectedCustomer.name}{selectedCustomer.company ? ` — ${selectedCustomer.company}` : ''}</p>}
             <p className="text-sm text-gray-500">Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             <p className="text-sm text-gray-500">Total items: {totalItems}</p>
           </div>
