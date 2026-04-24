@@ -206,10 +206,10 @@ Open http://localhost:3000.
 
 | Resource | Name | Region |
 |---|---|---|
-| Resource Group | `rg-James-stock-manager` | UK South |
+| Resource Group | `rg-atech-stock-manager` | UK South |
 | SQL Server | `sql-atech-stock-mgr.database.windows.net` | UK South |
 | SQL Database | `stock-manager` | UK South |
-| App Service Plan | `plan-atech-stock` (B1 Linux) | UK West |
+| App Service Plan | `plan-James-stock-manager` (B1 Linux) | UK West |
 | App Service | `James-stock-manager` | UK West |
 
 ---
