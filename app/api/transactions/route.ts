@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         data: {
           type,
           productId,
-          customerId: customerId || null,
+          customerId: customerId || allocateToCustomerId || null,
           quantity: qty,
           reference: reference || null,
           notes: notes || null,
