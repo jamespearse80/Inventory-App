@@ -10,6 +10,7 @@ interface AllocationItem {
   serialNumber: string | null
   assetTag: string | null
   notes: string | null
+  stockItem: { barcode: string | null; location: string | null } | null
 }
 
 interface Allocation {
@@ -107,6 +108,12 @@ function ItemRow({ item, index, allocationId, onSaved }: { item: AllocationItem;
       </td>
       <td className="py-1.5 pr-3 text-xs font-mono text-gray-500">
         {item.assetTag || <span className="text-gray-300 italic">no tag</span>}
+      </td>
+      <td className="py-1.5 pr-3 text-xs font-mono text-gray-500">
+        {item.stockItem?.barcode || <span className="text-gray-300 italic">no barcode</span>}
+      </td>
+      <td className="py-1.5 pr-3 text-xs text-gray-500">
+        {item.stockItem?.location || <span className="text-gray-300 italic">no location</span>}
       </td>
       <td className="py-1.5 text-right">
         <button
@@ -548,8 +555,10 @@ function AllocationsContent() {
                                 <thead>
                                   <tr className="text-left">
                                     <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-8">#</th>
-                                    <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-56">Serial Number</th>
-                                    <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-40">Asset Tag</th>
+                                    <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-48">Serial Number</th>
+                                    <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-36">Asset Tag</th>
+                                    <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-40">Barcode</th>
+                                    <th className="text-xs font-semibold text-gray-400 uppercase pb-2 w-36">Location</th>
                                     <th className="w-14"></th>
                                   </tr>
                                 </thead>

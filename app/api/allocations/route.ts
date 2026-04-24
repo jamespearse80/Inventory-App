@@ -17,7 +17,10 @@ export async function GET(req: NextRequest) {
       include: {
         product: { include: { category: true } },
         customer: true,
-        items: { orderBy: { createdAt: 'asc' } },
+        items: {
+          orderBy: { createdAt: 'asc' },
+          include: { stockItem: { select: { barcode: true, location: true } } },
+        },
       },
       orderBy: { allocatedAt: 'desc' },
     })

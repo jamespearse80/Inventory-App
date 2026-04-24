@@ -25,7 +25,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
         include: {
           product: true,
           customer: true,
-          items: { orderBy: { createdAt: 'asc' } },
+          items: {
+            orderBy: { createdAt: 'asc' },
+            include: { stockItem: { select: { barcode: true, location: true } } },
+          },
         },
       })
 
