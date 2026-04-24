@@ -10,7 +10,6 @@ export async function GET() {
       totalCustomers,
       totalAllocations,
       recentTransactions,
-      lowStockItems,
       inventoryData,
       weekTransactions,
     ] = await Promise.all([
@@ -23,12 +22,6 @@ export async function GET() {
         include: { product: true, customer: true },
       }),
       prisma.inventory.findMany({
-        where: {
-          product: { reorderPoint: { gt: 0 } },
-        },
-        include: { product: { include: { category: true } } },
-      }).then(items => items.filter(i => i.quantity <= i.product.reorderPoint)),
-      prisma.inventory.findMany({
         include: {
           product: { include: { category: true } },
         },
@@ -38,6 +31,10 @@ export async function GET() {
         select: { type: true, quantity: true, product: { select: { unitCost: true } } },
       }),
     ])
+
+    const lowStockItems = inventoryData.filter(
+      i => i.product.reorderPoint > 0 && i.quantity <= i.product.reorderPoint
+    )
 
     // Category stock summary
     const categoryStockMap: Record<string, { name: string; quantity: number; count: number }> = {}

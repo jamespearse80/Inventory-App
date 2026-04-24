@@ -126,13 +126,21 @@ interface DispatchedItem {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [expandedTx, setExpandedTx] = useState<Record<string, DispatchedItem[] | 'loading'>>({})
 
   const fetchData = async () => {
     setLoading(true)
+    setError(false)
     try {
       const res = await fetch('/api/dashboard')
-      if (res.ok) setData(await res.json())
+      if (res.ok) {
+        setData(await res.json())
+      } else {
+        setError(true)
+      }
+    } catch {
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -159,7 +167,18 @@ export default function DashboardPage() {
     )
   }
 
-  if (!data) return <div className="text-red-500">Failed to load dashboard.</div>
+  if (!data) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3">
+      {error && <p className="text-red-500">Failed to load dashboard.</p>}
+      <button
+        onClick={fetchData}
+        className="flex items-center gap-2 text-sm text-[#C49A2A] hover:text-[#A07818]"
+      >
+        <RefreshCw className="h-4 w-4" />
+        Retry
+      </button>
+    </div>
+  )
 
   const { stats, recentTransactions, lowStockItems, categoryStock } = data
 
