@@ -2,7 +2,7 @@
 
 A full-stack IT asset inventory management web application built for Atech Cloud. Deployed on Microsoft Azure with Microsoft Entra ID (Azure AD) authentication.
 
-**Live URL:** https://atech-stock-manager.azurewebsites.net
+**Live URL:** https://James-stock-manager.azurewebsites.net
 
 ---
 
@@ -170,7 +170,7 @@ Every push to `main` triggers the GitHub Actions workflow (`.github/workflows/az
 | `AZURE_CLIENT_SECRET` | GitHub Secret + Azure App Service | Entra app registration client secret |
 | `AZURE_TENANT_ID` | GitHub Secret + Azure App Service | Entra tenant ID |
 | `AUTH_SECRET` | GitHub Secret + Azure App Service | NextAuth signing secret |
-| `NEXTAUTH_URL` | Azure App Service | `https://atech-stock-manager.azurewebsites.net` |
+| `NEXTAUTH_URL` | Azure App Service | `https://James-stock-manager.azurewebsites.net` |
 
 ---
 
@@ -206,11 +206,11 @@ Open http://localhost:3000.
 
 | Resource | Name | Region |
 |---|---|---|
-| Resource Group | `rg-atech-stock-manager` | UK South |
+| Resource Group | `rg-James-stock-manager` | UK South |
 | SQL Server | `sql-atech-stock-mgr.database.windows.net` | UK South |
 | SQL Database | `stock-manager` | UK South |
 | App Service Plan | `plan-atech-stock` (B1 Linux) | UK West |
-| App Service | `Atech-Stock-Manager` | UK West |
+| App Service | `James-stock-manager` | UK West |
 
 ---
 
@@ -219,7 +219,7 @@ Open http://localhost:3000.
 Sign-in is handled by Microsoft Entra ID. Only users within the configured tenant (`5b6e60f0-f6fe-49c5-a085-0296faadce46`) can authenticate. The signed-in user's name and a sign-out button are displayed in the top navigation bar.
 
 The Entra app registration requires:
-- **Redirect URI:** `https://atech-stock-manager.azurewebsites.net/api/auth/callback/microsoft-entra-id`
+- **Redirect URI:** `https://James-stock-manager.azurewebsites.net/api/auth/callback/microsoft-entra-id`
 - **API permissions:** `User.Read` (delegated)
 
 ---
